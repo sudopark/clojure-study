@@ -307,3 +307,112 @@
 (hello "john") ;; hello john
 ;; [] 비어있을때는 -> hello world를 출력하고
 ;; [name] 값이 하나 들어왔을때는 hello + name으로 출력해라
+
+
+;; ## 조건문
+;; if 구문은 조건에 따라 다른 값을 표시할 수 있다
+;; if 구문의 형태는 (if 조건값 참값 거짓값) 이다 
+;; 거짓값은 생략할수있고 생략하면 nil값을 나타낸다.
+(if true 1 2)  ;; 1
+(if false 1)   ;; nil
+
+;; if는 조건에 따른 값을 나타내는 구문이기때문에 값이 쓰이는 곳이면 어디든 쓸 수 있다.
+(let [x (if true 1 2)] (+ x 1)) ;; 2
+(let [x (if false 1 2)] (+ x 1)) ;; 3
+(+ (if true 1 2) 1) ;; 2
+
+;; nil은 거짓으호 판단되고 그렇지 않는 값은 참으로 판단된다.
+(if nil 2 3)  ;; 3
+(if 1 1 2) ;; 1
+
+;; 조건을 판단해주는 =, >, <, >=, <= 등이 있다.
+(if (= 1 1) 1 2) ;; 1
+
+;; 조건이 맞지 않음을 나타내는 not이 있다
+(if (not(= 1 1)) 1 2) ;; 2
+;; 같지 않은 것을 판단하는 일은 많이 있기 때문에 not=을 제공한다.
+(if (not= 1 2) 1 2) ;; 1
+
+;; ### and와 or
+;; 여러 조건을 조합하기 위해 and와 or를 제공하낟.
+(if (and (= 1 1) (= 2 2)) "o" "x")  ;; o
+(if (or (= 1 1) (= 2 1)) "o" "x") ;; o
+
+;; and는 항목의 값을 하나씩 판단하는데 먼저 나오는 거짓값을 나타낸다.
+(and (+ 1 2) (+ 3 4) nil (+ 5 6)) ;; nil
+(and false (+ 1 2) (+ 3 4) (+ 5 6)) ;; false
+
+;; or도 따로 쓸 수 있다
+(or 1 2) ;; 1
+(or nil 2) ;; 2
+;; or는 처음 나오는 참값을 나타낸다. 때에 따라서 값이 없을 때 기본값을 사용하기 좋다.
+(def params {:limit 10})
+(let [limit (or (:limit params) 50)] limit)  ;; 10
+
+(def prams {})
+(let [limit (or (:limit params) 44)] limit)   ;; 44
+
+;; ### 조건문은 함수인가?
+;; 다음은 조건이 참이면 참을 출력하고 조건이 거짓이면 거짓을 출력하는 함수다.
+(defn print-bool [bool]
+  (if bool (println "true") (println "false")))
+(print-bool true) ;; true \n nil
+(print-bool false) ;; false \n nil
+;; 만일 if가 함수라면 함수를 평가하는 동작처럼 안쪽에 있는 구문들이 순서대로 실행되어야하고, 
+;; 그렇다면 참과 거짓 모두 출력 되어야 한다.
+;; if를 다음과 같이 my-if라고 만들어 보자.
+;; (defn my-if [condition true-form false-form]
+;;   (if condition
+;;     true-form
+;;     false-form))
+
+;; (my-if (= 1 1) (println "T") (println "F"))
+;; ;; T
+;; ;; F
+;; ;; nil
+;; 설명 이상함;;
+
+
+;; ## if-let
+;; 아래는 get-user 라는 함수로 가져온 값을 user에 로컬 바인딩하고
+;; user 값이 있으면 :id 값을 리턴하고 없으면 "user not found"라는 문자열을 리턴하는 예제이다.
+(defn get-user [] 
+  {:d 1 :name "user name"})
+
+(let [user (get-user)]
+  (if user
+    (:id user)
+    "user not found"))
+;; 여기서는 get-user가 항상 값을 리턴하기 때문에 :id 값이 1이 나왔다.
+;; 하지만 get-user가  nil을 리턴하는경우 위와같이 사용해서 nil인 경우에 대한 처리를 해줘야 한다.
+;; 이런 경우에 간단히 사용할 수 있는 것이 if-let 구문이다.
+(if-let [user (get-user)]
+  (:id user)
+  "user not found")
+;; 1
+;; 조건 바인딩을 이용하여 코드를 좀더 간단하게 쓸 수 있다.
+;; 다만 let과 같이 여러개를 바인딩 할수는 없다.
+;; if-let과 비슷하게 when-let고 있다. when-let은 거짓에 대하 값이 없는 경우 사용할 수 있다.
+(when-let [user (get-user)]
+  (:id user))
+;; 1
+
+;; ### 조건 함수에 대한 네이밍
+;; 클로저에서는 true 또는 false를 리턴하는 조건 함수들은 ?로 끝나는 네이밍 규칙을 사용한다.
+(if (zero? 0) 1 2) ;; 1
+(if (zero? 1) 1 2) ;; 2
+
+;; 예제
+(def http-default-port 80)
+(def config {:production {:host "10.0.0.1"
+                          :port http-default-port}
+             :developmemnt {:host "127.0.0.1"
+                            :port 8080}})
+
+(defn url [conf]
+  (str "http://" (:host conf)
+       (when-not (= http-default-port (:port conf))
+         (str ":" (:port conf)))))
+
+(url (:production config)) ;; "http://10.0.0.1"
+(url (:developement config)) ;; "http://127.0.0.1:8080"
