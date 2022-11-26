@@ -518,3 +518,77 @@ first-element ;; [:name "some"]
 ;; 모든 항목이 조건에 만족하는지 여부를 리턴해주는 함수
 (every? pos? [1 2 3]) ;; true
 (every? pos? [0 1 2]) ;; false
+
+
+### 시퀀스함수
+
+(def user {:id 1 :name "some" :level 10})
+
+(defn inc-level [user data]
+  (if (empty? data)
+    user
+    (inc-level (update-in user [:level] #(+ % (first data))) (rest data))
+    ))
+
+(inc-level user [1 5 1 2]) ;; {:name "some" :id 1 :level 19}
+
+;; 위 inc-level을 꼬리재귀를 쓰면
+(defn inc-level [user data]
+  (if (empty? data)
+      user
+      (recur (update-in user [:level] #(+ % (first data))) (rest data))
+      ))
+
+;; users내에 있는 레벨을 모두 1씩 증가
+(def users [{:id 1 :level 2}
+            {:id 2 :level 3}
+            {:id 3 :level 3}])
+(defn up-level [init-users]
+  ((fn [result users]
+     (if (empty? users)
+       result
+       (recur (conj result (update-in (first users) [:level] inc)) (rest users))
+       ))
+   [] init-users))
+
+;; conj에서 result 와 first inc 된게 합쳐짐?
+;; (conj [1 2 3] 4) ;; [1 2 3 4]
+
+;; 위의 예제를 시퀀스함수를 쓰면 아래와 같이 바꿀수 있다.
+(defn up-level [users]
+  (map #(update-in % [:level] inc) users))
+
+;; #### 순수한 함수와 부수효과
+;; 함수형 프로그램에서는 함수는 하나의 일만 해야한다.
+;; 그 말은 함수 안에 하나의 구문만 있어야 한다.
+(defn add [x y]
+  (+ x 1)
+  (+ y 1)
+  (+ x y))
+
+(add 1 1) ;; 2
+
+위 예제처럼 클로저 함수는 여러 구문을 쓸 수 있다. 
+하지만 마지막 구문이 리턴되는 값이기 때문에 중간에 쓴 구문은 아무 의미가 없다.
+값도 변경할 수 없기 때문에 중간 결과를 어디에 담을수도 없다.
+-> 따라서 클로저 함수는 단 하나의 구문만 의미 있다.
+
+하지만 예외가 있다.
+바로 부수효과라고 부른는 일이 함수 안에서 일어나게되면 여러 구문이 의미있게 된다.
+부수효과는 외부 환겨에 영향을 주는 일을 말한다.
+데이터베이스와 같은 외부 환경에 명령문을 실행하거나 모니터 화면과 같은 외부 환경에 문자를 출력하는 일이 모두 부수 효과다.
+다음은 함수 중간에 화면에 출력하는 일을 하는 함수이다.
+(defn add [x y]
+  (println "x:" x "y:" y)
+  (+ x y))
+(add 1 1)
+;; x:1 y:1
+;; 2
+다음은 데이터베이스에 insert 문을 실행하고 추가한 user를 리턴하는 함수 예제이다.
+(defn insert-user! [db-spec user]
+  (jdbc/insert! db-spec :users user)
+  user)
+부수함수를 내는 함수는 이름 뒤에 !를 붙인다.
+부수효과는 상태변경과 같아서 프로그래밍이 복잡해지면 상태가 어떨게 변하고 있는지 추적하기 힘들다.
+또 메모제이션과 같은 다양한 함수형 프로그래밍 기법들을 쓰는데 제약이 생긴다.
+하지만 부수 효과 없이는 프로그램이 아무 의미가 없기 때문에 부수효과가 없는 프로그램은 없다.
