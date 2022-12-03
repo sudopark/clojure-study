@@ -141,7 +141,7 @@ disj 함수는 요소들을 제거할때 사용한다.
 (disj #{1 2 3} 1) => #{2 3}
 
 
-### 리스트는 크로저의 핵심이다
+### 리스트는 클로저의 핵심이다
 클로저의 기본 데이터 구조인 리스트는 LISP 언어의 본질에서 매우 유래한다. 사실 LISP이라는 이름은 LISt Processing에서 온 것이다.
 '(1 2 3)
 리스트의 맨앞에 오는 인용구는 리스틀 만드는데 쓴다. 왜 이 기호가 필요할까?
@@ -157,3 +157,115 @@ LISP에서는 식(expression)의 첫 요소를 연산자나 함수로 인식하�
 코드가 데이터로 취급된다 -> 모든 클러저 코드는 데이터의 리스트로 구성되어있다.
 
 
+### 심볼과 바인딩의 기술
+: 클로저의 심볼은 값을 가르키고, 그 심볼이 평가되면 가르키는 값을 반환한다.
+def: def는 값에 이름을 줘서 나중에 다른곳에서도 이를 참조할수있게하낟.
+def는 심볼에 값을 직접 바인딩하지않고 var를 통해서 한다.
+Var는 다른 언어의 변수와는 같지 않은데 바뀌지않기때문이다.
+(def developer 'Alice' )
+-> def는 REPL의 디폴트 이름공간인 user에 심볼인 developer를 위한 var 객체를 만들어낸다. -> REPL이 developer를 평가하면 "Alice"라는 값으로 편가된다.
+
+심볼 앞에 /를 붙여서 이름공간을 지정할 수 있다.
+user/developer
+
+
+#### 전역적이지 않은 Var 혹은 임시으 Var -> let
+let을 사용하면 let 영역 안에서만 사용되는 심볼에 값을 바인딩 할 수 있다.
+(def developer "Alice")  ;; #'user/developer
+(let [developer "Alice in let"])   ;; "Alice in let"
+developer   ;; "Alice"
+
+let 바인딩은 벡터 안에 심볼과 값의 쌍들로 구성된다.
+
+
+### 함수 만들기
+우리는 함수를 반들고 그것을 심볼에 할당하고 나중에 그 함수를 호출할 수 있다.
+
+defn는 def와 비슷하지만 함수를 위한 var을 만든다. defn은 함수 이름, 인수들의 벡터, 함수 본문을 인수로 받는다.
+함수가 호출되면 클로저는 그 함수를 평가한 후 결과를 반환한다.
+빈 벡터를 이용하면 함수를 인수 없이 정의할수도있다.
+(defn foo [] "bar")
+(foo)  ;; "bar"
+
+(defn foo [k1 k2]
+  {:k1 k1
+  :k2 k2})
+(foo 1 2)
+
+
+#### 무명함수
+무명함수는 fn으로 만든다. 
+(fn [] "foo")
+((fn [] "foo")) ;; "foo"
+
+사실 defn은 def로 무명 함수에 이름을 바인딩하는것과 동일하다.
+(def foo-again (fn [] ("foo")))
+foo-again  ;; "foo"
+
+무명함수를 만드는 단축형도 있다. 괄호 앞에 #를 붙이면 된다.
+(#("foo"))
+만약 인수가 있다면 퍼센트 기호로 나타낼 수 있다.
+(#(str "foo" %) "!") ;; "foo!"
+
+이제 모든 종류의 심볼을 만드는 법에 대하여 알아봤다. 
+객체지향 언어에서는 비슷한 함수들을 묶어서 담는 객체를 사용한다 <-> 클로저는 이름공간이라는 다른 방법을 사용한다.
+
+#### 이름공간에서 심볼 관리하기
+이름 공간은 var에 대한 접근을 조직하고 제어하는 방법이다.
+def와 defn으로 var를 만들때 user라는 REPL의 디폴트 이름공간에서 var를 생성하는것을 보았다.
+ns를 사용하면 이름공간을 새로 만들고, 그 이름공간으로 전환할 수 있다.
+
+(ns alice.favFoods ;; nil
+이 시점에서 REPL의 현재 이름공간은 디폴트 이름공간에서 새롭게 정의한 alice.favFoods로 바뀌었다.
+*ns*가 반환화는 값을 보면 이를 확인할 수 있다.
+양쪽의 * 표시는 귀마개 표시라고 부르는데 다시 바인딩 할 수 있는것을 표시하는 관례이다.
+
+(def foo "bar")
+;; alice.favFoods/foo에 있음
+
+다른 공간으로 전환하면 그 심볼은 더이상 참조되지 않느다.
+
+클로저 라이브러리들은 이름공간과 그 이름공간의 심볼들로 구성된다.
+require를 이용하여 자신의 이름공간에서 라이브러리를 사용할 수 있는 세가지 방법이 있다.
+1. 이름공간을 인수로 받아 require를 사용하는것 -> 그러면 라이브러리가 로딩되고 완전한 이름으로 접근할 수 있다.
+앞에 set 함수를 사용했을 때 완전한 이름을 사용해야 했다. clojure.set/union의 예를 보자
+;; 합잡합 구하기
+(clojure.set/union #{1 2 3} #{2 3 4}) ;; #{2 3}
+
+clojure.set 이름공간은 REPL이 시작될때 로딩된다. 그렇지 않은 경우 require를 사용해서 그 작업을 직접 할 수 있다.
+(require 'clojure.set)
+
+2. 두번째 방법으s :as 를 사용해서 require의 별칭(alias) 기능을 이용하는 것이다.
+(ns some_namespace) ;; => nil
+(require '[alice.favFoods : as af])
+af/foo ;; "foo"
+
+(ns some_namespace
+  (:require [alice.favFoods :as af]))
+  af/foo ;; "foo"
+
+3. require를 이름공간, :refer, :all 옵션과 함께 사용할 수 있다.
+이러면 그 이름공간의 모든 심볼이 로딩되고 현재의 이름공간에서 심볼 이름만으로 직접 접근할 수 있다. -> 이름 충돌이 일어날 수 있어 약간 위험함
+또한 함수가 어떤 라이브러리에서 왔는지 파악 힘듬
+
+다른 네임스페이스에서 favFoods의 foo를 접근하려면 어떻게 해야할까
+(ns some_namespace
+  (:require [alice.favFoods :refer :all]
+            [rabit.favFoods :refer :all]))
+
+대부분의 클로저 코드는 require로 라이브러리를 사용하고 :as 로 별칭을 지정한다.
+예외가 될 수 있는 것은 테스트 코드를 작성할 때 인데, 이럴때는 테스트하려는 이름공간과 clojure.set의 함수들을 직접 사용하는 것이 일반적이다.
+
+use 함수는 require를 :refer :all과 함께 쓰는것과 같다.(:refer :all이 더 좋음)
+
+예제 - 유저 a, b가 좋아하는 수를 받아 공통으로 좋아하는 수를 출력
+(ns example
+ (:require clojure.set :as s))
+
+(defn common-fav-numbers [ns1, ns2]
+  (let [ns-set1 (set ns1)
+        ns-set2 (set ns2)
+        common (s/intersection ns-set1 ns-set2)]
+   (str "common numbers: " common)))
+
+(common-fav-numbers [1 2 3] [2 3 4]) ;; "common numbers #{2 3}"
