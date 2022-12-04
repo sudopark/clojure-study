@@ -344,3 +344,106 @@ recur를 사용하면 재귀 호출시 스택을 소모하지 않는다. 함수�
 
 recur는 점프할 재귀점을 정의하고 함수 인수에 새로운 값을 넣어 실행하여 매번 호출할때 하나의 스택만을 사용한다.
 위 예제에서는 loop가 없어서 재귀점은 함수 자체이다.
+
+
+### 함수형 프로그래밍에서의 데이터 변환
+
+(def animals [:mouse :duck :dodo :lory :eaglet])
+(#(str %) :mouse) ;; ":mouse"
+
+(map #(str %) animals)  ;; (":mouse" ":duck" ":dodo" ":lory" ":eaglet")
+반환된 결과는 백터가 아니라 시퀀스이다 => clogure.lang.LazySeq
+
+map 함수는 지연 시퀀스를 반환한다. 지연 시퀀스는 무한 시퀀스를 다를 수 있음을 의미한다.
+
+부수효과
+(def animals-print (map #(println %) animals)) ;; 
+이경우 출력되는 것이 아무것도 없다. -> 시퀀스가 실제 사용될때 까지는 부수효과가 생기지 않기 때문에
+animals-print ;; 순서대로 출력되고 + 마지막줄에 (nil .... )
+
+민약 부수 효과를 강제하고 싶다면 doall을 사용하면 된다.
+(def animals-print2 (doall (map #(println %) animals)))
+;; 바로 부수효과 출력
+
+animals-print2 ;; (nil ...) 만 출력
+
+map 함수는 인수로 컬렉션을 하나 이상 받을 수 있다. -> 이경우 짧은 콜렉션에 맞춰 종료된다.
+
+
+### reduce
+reduce 함수는 클로저에서 가장 중요하고 기본적인 함수 중의 하나이다.
+(reduce + [1 2 3]) ;; 6
+(reduce (fn [r x] (+ r (* x x))) [1 2 3])  ;; 14
+(reduce (fn [r x] (if (= x nil) x (conj r x))) [1 nil 2 nil 3]) ;; [1 2 3]
+
+reduce는 map과 달리 무한 시퀀스에서 사용할 수 없다.
+
+### 다른 유용한 데이터 처리 함수들
+(filter (comp not nil?) [1 nil 2]) ;; (1 2) 문법 틀렸을수도있음
+(remove nil? [1 nil 2]) ;; (1 2)
+
+for
+for는 처리하고자하는 컬렉션의 요소를 심볼에 바인딩해서 본문에서 처리한다.
+(for [animals [1 2 3]]
+    (str .. animals))
+
+for구문에서 사용되는 콜렉션이 하나 이상이면 컬렉션들을 중첩하여 순회한다.
+(for [animals [:1 :2 :3]
+      colors [:r :g]]
+    (str (name animals) (name color)))
+;; (":1:r" ":1:g"
+;;  ":2:r" ":2:g"
+;;  ":3:r" ":3:g")
+
+:let 수정자
+for 구문 내에서 let 바인딩을 할 수 있다.
+(for [animals [:m :d :l]
+     colors [:r :g]
+     :let [animal-str (str "animal-" (name animals))
+            color-str (str "color-" (name colors))
+            display-str (str animal-str "-" color-str)]]
+        disply-str)
+
+:when 수정자
+진위함수가 참일때만 본문이 수행된다.
+(
+    for [
+        animal [:m :d :l]
+        color [:r :b]
+        :let [
+                animal-str (str "animal-" (name animal))
+                color-str (str "color-" (name color))
+                display-str (str animal-str "-" color-str)
+            ]
+        :when (= color :blue)
+    ]
+    display-str
+)
+
+flatten
+flatten은 중첩된 컬렉션을 받아서 중첩을 제거한 하나의 시퀀스를 반환한다.
+(flatten [[:d [:m] [[:l]]]]) ;; (:d :m :l)
+
+리스트를 벡터로 변환
+(vec `(1 2 3)) ;; [1 2 3]
+(into [] `(1 2 3)) ;; [1 2 3] -> conj로 첫번째 컬렉션에 두번째 컬렉션을 추가한다.
+
+into는 맵을 정렬 맵(sorted map)으로 바꿀때도 사용할 수 있다.
+정렬맵은 키-값 쌍들이 키에 따라 정렬되어있다.
+(sorted-map :b 2 :a 1 :c 3) ;; {:a 1 :b 2 :c 3}
+(into (sorted-map) {...})
+
+또한 쌍들의 백터도 맵으로 바꿀 수 있다.
+(into {} [[:a 1] [:b 2] [:c 3]])  ;; {:a 1 :b 2 :c 3}
+반대도 가능
+(into [] {:a 1 :b 2}) ;; [[:a 1] [:b 2]]
+
+partition
+컬렉션의 요소들을 묶음으로 나누는데 유용
+(partition 3 [1 2 3 4 5 6 7]) ;; ((1 2 3) (4 5 6))
+요소가 충분하지 않으면 묶을수 있는 만큼 묶는다. 남은 요소들도 묶고 싶다면
+(partition-all 3 [1 2 3 4]) ;; ((1 2 3) 94)
+
+partition-by 
+하나의 함수를 받아서 컬렉션의 모든 요소에 그 함수를 적용하고 값이 변할때마다 새로운 묶음을 만들어낸다
+(partition-by #((= % 6)) [1 2 3 4 5 5 6 7 8 9])  ;; ((1 2 3 4 5) (6) (7 8 9))
