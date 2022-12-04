@@ -165,3 +165,102 @@ case에 기본값을 제공하려면 맨 마지막에 하나의 식을 주면 �
         "empty" "3"
         "unknown"))
 ;; unknown
+
+
+### 함수를 만드는 함수
+함수의 인수를 일부만 적용하고 나중에 나머지를 적용하고자할때 partial 함수를 사용하면 된다.
+partial은 클로저의 커링을 하는 방법이다.
+커링(currying)은 다중 인수를 갖는 함수를 여러개의 단일 인수 함수들로 연결(chain)하는 방식으로 변환하는 기법을 말한다.
+-> 인수를 부분적으로 적용해서 새로운 함수를 만드는 방법
+
+(defn grow [name direction]
+    (if (= direction :small) 
+        (str name " is growing smaller")
+        (str name " is growing bigger")))
+-> 여기서 이름은 "alice"로 고정하고 방향만 따로 받는 함수를 partial 함수를 적용해서 만드면
+(partial grow "alice")
+((partial grow "alice") :small)  ; => "alice is growing smaller"
+
+comp
+comp는 여러 험수들을 합성해서 하나의 새로운 함수를 만든다.
+(defn toggle-grow [direction]
+    (if (= direction :small) :big :small))
+(toggle-grow :small) ;; :big
+
+(defn oh-my [direction]
+    (str "oh you are growing " direction))
+
+;; 직아졌다 커지는 경우표시
+(oh-my (toggle-grow :small)) ; => "oh you are growing bigger"
+
+;; comp 함수를 이용하여 두 함수를 합성
+(defn suprise [direction]
+    ((comp oh-my toggle-grow) direction))
+
+;; example
+(defn add [x y]
+    (+ x y))
+
+(def add-5 [x]
+    (partial add 5) x)
+(def add-5 (partial add 5))
+
+### 구조분해
+구조분해는 벡터와 맵 같은 컬렉션에서 특정 요소들에 이름을 붙인다.
+(let [[color size] ["blue" "small"]]
+    (str "the " color " door is " size))
+["blue" "small"] -> color와 size에 값이 할당되었음
+구조분해는 바인딩(binding expression)에서 심볼들의 위치에 따라서 어떤 값을 어떤 심볼에 바인딩할지를 결정한다.
+
+(let [x ["blue" "small"]
+    color (first x)
+    size (last x)]
+    (str "the " color " door is " size))
+;; 구조분해를 쓰지 않으면 코드가 장황해진다.
+
+구조분해는 중첩된 경우에도 아주 쉽게 처리한다.
+(let [[color [size]] ["blue" ["very small"]]]
+    (str ....))
+
+구조 분해를 통해 원하는 값을 바로 심볼로 바인딩하는 동시에, 처음 자료구조 전체를 얻고 싶다면 어떻게 해야할까?
+이럴때 :as 키워드를 사용하면 된다.
+(let [[color [size] :as original] ["blue" ["small"]]]
+    {:color color :size size :original original})
+
+구조분해는 맵에도 사용할 수 있다
+let 에서 맵의 키에 해당하는 값을 심볼에 바인딩 할 수 있다.
+(let [{f1 :f1 f2 :f2}
+        {:f1 "red" :f2 "blue"}]
+    (str "the flowers are " f1 " and " f2))
+    ;; the flowers are red and blue
+
+:or 를 쓰면 맵에 해당하는 요소가 없을때를 위한 디폴트 값을 설정할 수 있다.
+(let [{f1 :f1 f2 :f2 :or {f2 "missing"}}
+        {:f1 "red"}]
+    (str "the flowers are " f1 + " and " f2))
+;; the flowers are red and missing
+
+처음 자료구조 전체를 얻으려면 맵에서도 마찬가지로 :as를 쓴다
+(let [{f1 :f1 :as all-fs}
+        {:f1 "red"}]
+    [f1 all-fs])
+;; ["red" {:f1 "red"}]
+
+:keys
+:keys는 다음에 심볼들의 벡터가 나온다.
+(let [{:keys [f1 f2]}
+        {:f1 "red" :f2 "blue"}]
+    (str ....))
+
+defn으로 함수를 정의할때도 함수의 인수에 대해서 구조분해를 적용할 수 있다.
+구조분해는 들어오는 자료구조의 요소를 함수 인수에 바인딩할 뿐만 아니라 그 자료구조가 어떤 형태인지 보여준다는 점에서 유용하다.
+(defn flower-colors [colors]
+    (str "the flowers are "
+    (:f1 colors)
+    "and "
+    (:f2 colors)))
+(flower-colors {:f1 "red" :f2 "blue"})
+
+-> 위 함수를 구조분해를 사용하여 인수가 맵이라는것을 더 명시적으로 선언할 수 있다.
+(defn flower-colors [{:keys [f1 f2]}]
+    (str ...))
