@@ -154,3 +154,76 @@ alter와 다른점은 commute는 트랜잭션 동안 재시도를 하지 않고 
 
 @x ;; 1->2->3->4->5
 @y ;; 1->4->5->6->7
+
+
+### 비동기적인 변경을 관리하기 위해 agent 사용하기
+클로저에서 atom은 독립적인 동기적 변경을 위해
+그리고 ref는 조화로운 동기적 변경을 위해 사용한다.
+
+#### agent
+에이전트는 독립적인 비동기적 변경을 위하여 사용 -> 일을 시키고 그 결과가 필요 없는 경우 에이전트에 넘김
+
+(def who-agent (agent :cc))
+@who-agent ;; => :cc
+
+send 함수로 에이전트의 상태를 바꿀 수 있다. send는 함수를 받아서 에이전트로 보냄
+send로 전달되는 함수는 에이전트의 현재 상태를 인수로 받는데 필요하다면 그 뒤에 인수를 추가할 수 도 있다.
+
+(defn change [state]
+    (case state
+        :cc :dd
+        :dd :ee
+        :ff))
+(send who-agent change) ;; => Agent objectg
+@who-agent ;; => :dd
+
+send가 에이전트에 동작을 보내면, 그 동작은 스레드 풀중의 한 스레드에 의해 처리된다.
+에이전트는 한번에 하나씩만 동작을 처리한다.
+같은 스레드에서 보낸 동작은 보낸 순서대로 처리한다.
+swap!이나 alter와는 다르게 send는 처리 결과를 기다리지 않고 즉시 제어를 반환한다.
+
+#### send-off
+로그파일에 쓰는 것과 같이 I/O를 대기하는 작업에는 send는 적합하지 않다
+-> 이럴때는 send-off 를 사용한다.
+
+send-off는 send 형식과 같다. 차이점은 send-off 는 I/O 대기가 있을 수 있는 동작에 사용해야한다는 점이다.
+
+send는 CPU 작업이 많은 연산에 적합한 고정 스레드 풀을 사용한다. 반면 send-off는 I/O 작업이 많은 스레드 풀이 대시 상태에 빠지지 않도록 확장 스레드 풀을 사용한다.
+
+에이전트로 보낸 함수에서는 트랜잭션도 처리할 수 있다. 이는 그 함수 안에서 ref를 변경하거나 트랜잭션이 완료된 후에 다른 동작을 다시 보낼 수 있다는 것의 의미한다.
+
+만약 에이전트 내에서 에러나 예외가 발생하면 어떤 일이 벌어질까? 
+
+(defn change-error [state])
+    (throw (Exception. "Boom!")))
+
+(send who-agent change-error) ;; => agent + status == failed
+@who-agent ;; => :cc (처음값)
+
+위의 상황에서 에러는 캐싱되고 who-agent에 다른 동작이 전달될때 방출한다.
+(send who-agent change) ;; => 에러 => Exception Boom!
+
+ 클로저에서 제공하는 agent-errors 함수로 에이전트의 에러를 검사할 수도 있다.
+
+ (agent-errors who-agent) ;; =>  에러 반환
+
+#### restart-agent
+에이전트는 restart-agent 로 함수를 다시 시작하기 전까지 실패한 상태를 유지한다.
+restart-agent는 에러를 제거하고 초기상태를 다시 세팅한다.
+
+(restart-agent who-agent :cc) ;; => :cc
+
+#### set-error-mode!
+set-error-mode! 함수로 에이전트의 에러 모드를 설정하면 에러에 대응하는 방식을 바꿀 수 있다.
+에러모드를 :fail 또는 :continue로 설절할 수 있다.
+
+(set-error-mode! who-agent :continue)
+:continue 로 설정하고 set-error-handler-fn! 함수로 에러 핸들러를 지정하면, 에이전트에 예외가 발생하는 순간 에러 핸들러가 호출된다. + 에이전트를 재시작할 필요 없다.
+
+(defn error-handler-fn [a ex]
+    (println "error" ex "value is " @a))
+(set-error-handler-fn! who-agent error-handler-fn)
+
+
+에이전트는 독립적으로 수행되는 작업에 아주 좋다.
+다른 시스템으로 메세지를 중계하거나, 안전한 멀티스레드 방식으로 파일에 로그를 기록하는 로봇을 제어하는 명령을 제어하는 작업 등 등
