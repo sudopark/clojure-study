@@ -9,4 +9,6 @@
   (testing "FIXME, I fail."                                 ;; testing은 deftest에서 사용되며 무엇을 테스트 하는지에 대해 설명한다
     (is (= 1 1))))                                          ;; is는 실제 테스트를 하는 단언문(assertion)을 제공한다.
 
-
+(deftest test-serpent-talk
+  (testing "Cries serpent! with a snake_case version of the input"
+    (is (= "Serpent! You said: hello_there" (serpent-talk "hello there")))))
