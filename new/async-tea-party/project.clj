@@ -5,4 +5,5 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/core.async "1.6.673"]]
-  :repl-options {:init-ns async-tea-party.core})
+  :repl-options {:init-ns async-tea-party.core}
+  :main async-tea-party.core)
