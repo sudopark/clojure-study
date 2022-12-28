@@ -45,3 +45,35 @@
     (if (sequential? x)  ;; head가 시퀀스이면
       (concat (flt x) (flt xs)) ;; head랑 rest를 flatten 해라
       (cons x (flt xs))))) ;;  header + flatten 된 rest
+
+;; problem 30 - compress sequence
+
+;; (= (apply str (__ "Leeeeeerrroyyy")) "Leroy")
+;; (= (__ [1 1 2 3 3 2 2 3]) '(1 2 3 2 3))
+;; (= (__ [[1 2] [1 2] [3 4] [1 2]]) '([1 2] [3 4] [1 2]))
+
+reduce (fn [acc ele] (if (= (last acc) ele) acc (conj acc ele))) []
+;; 다르게 생각 해보면 각 시퀀스의 엘리먼트로 partition-by하고 아 파티션들의 head 만 취해주면 된다
+#(map first (partition-by identity %))
+;; partition-by identity % -> identity 결과가 다를때마다 나눔
+
+
+;;  problem 33 - Replicate a sequence
+
+;; (= (__ [1 2 3] 2) '(1 1 2 2 3 3))
+;; (= (__ [:a :b] 4) '(:a :a :a :a :b :b :b :b))
+;; (= (__ [4 5 6] 1) '(4 5 6))
+;; (= (__ [[1 2] [3 4]] 2) '([1 2] [1 2] [3 4] [3 4]))
+;; (= (__ [44 33] 2) [44 44 33 33])
+
+(fn [seq n] (reduce #(concat %1 (take n (repeat %2))) [] seq))
+
+
+;; problem 34 - Implement range
+
+;; (= (__ 1 4) '(1 2 3))
+;; (= (__ -2 2) '(-2 -1 0 1))
+;; (= (__ 5 8) '(5 6 7))
+
+(fn [start end] (take (- end start) (iterate inc start)))
+
