@@ -32,3 +32,16 @@
     (< (count seq) 2) true
     (= (first seq) (last seq)) (recur (rest (drop-last seq)))
     :else false))
+
+
+;; problem 28 - Flatten
+
+;; (= (__ '((1 2) 3 [4 [5 6]])) '(1 2 3 4 5 6))
+;; (= (__ ["a" ["b"] "c"]) '("a" "b" "c"))
+;; (= (__ '((((:a))))) '(:a))
+
+(fn flt [[x & xs]]
+  (if x ;; head가 있는 경우에만 -> 없으면 nil?
+    (if (sequential? x)  ;; head가 시퀀스이면
+      (concat (flt x) (flt xs)) ;; head랑 rest를 flatten 해라
+      (cons x (flt xs))))) ;;  header + flatten 된 rest
