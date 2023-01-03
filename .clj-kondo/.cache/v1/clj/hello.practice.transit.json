@@ -1,0 +1,1 @@
+["^ ","~$factorial",["^ ","~:row",132,"~:col",1,"~:fixed-arities",["~#set",[1]],"~:name","^0","~:ns","~$hello.practice","~:top-ns","^7","~:arities",["^ ","~i1",["^ ","~:ret",["^4",["~:number","~:pos-int"]],"~:arglist-str","[n]"]],"~:type","~:fn"],"~:filename","/Users/sudo.park/Documents/codebase/closure-study/hello/src/hello/practice.clj"]

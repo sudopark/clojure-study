@@ -92,3 +92,45 @@ reduce (fn [acc ele] (if (= (last acc) ele) acc (conj acc ele))) []
 ;; (= (__ [1 2] [3 4 5 6]) '(1 3 2 4))
 ;; (= (__ [1 2 3 4] [5]) [1 5])
 ;; (= (__ [30 20] [25 15]) [30 25 20 15])
+
+
+;; problem 40 - Interpose a Seq
+
+;; (= (__ 0 [1 2 3]) [1 0 2 0 3])
+;; (= (apply str (__ ", " ["one" "two" "three"])) "one, two, three")
+;; (= (__ :z [:a :b :c :d]) [:a :z :b :z :c :z :d])
+
+(fn [seperator, seq] 
+  (reduce #(concat %1 seperator %2) seq))
+
+
+;; problem 41 -  Drop Every Nth Item
+
+;; (= (__ [1 2 3 4 5 6 7 8] 3) [1 2 4 5 7 8])
+;; (= (__ [:a :b :c :d :e :f] 2) [:a :c :e])
+;; (= (__ [1 2 3 4 5 6] 4) [1 2 3 5 6])
+
+(fn [seq n]
+  (let [size (count seq)
+        pairing #(list % (nth seq %))
+        filtering #(not= (rem (+ (first %) 1) n) 0)]
+    (map #(last %) (filter filtering (map pairing (range 0 size))))))
+
+
+;; problem 42 - Factorial Fun
+
+;; (= (__ 1) 1)
+;; (= (__ 3) 6)
+;; (= (__ 5) 120)
+;; (= (__ 8) 40320)
+
+(fn [n]
+  (let [decreasing (iterate dec n)
+        acc #(* %1 %2)]
+    (reduce acc (take n decreasing))))
+
+(defn factorial [n]
+  (if (= n 1) 1 (* n (factorial (dec n)))))
+
+((fn [n]
+  (if (= n 1) 1 (* n (recur (dec n))))) 6)
